@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { GoogleGenAI } from "@google/genai";
 import { marked } from "marked";
@@ -17,7 +17,7 @@ const SparklesIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z" />
   </svg>
 );
 
@@ -140,6 +140,27 @@ const StopIcon = () => (
   </svg>
 );
 
+const SunIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5"/>
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+);
+
+const AlertCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+
 // --- Styles ---
 const styles = `
   :root {
@@ -154,6 +175,30 @@ const styles = `
     --success: #22c55e;
     --radius: 12px;
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --input-bg: #ffffff;
+    --code-bg: #e2e8f0;
+    --pre-bg: #1e293b;
+    --pre-text: #f8fafc;
+    --chip-hover: #f1f5f9;
+    --chip-active: #eff6ff;
+  }
+
+  body.dark {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --primary: #60a5fa;
+    --primary-hover: #3b82f6;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --error: #f87171;
+    --success: #4ade80;
+    --input-bg: #0f172a;
+    --code-bg: #334155;
+    --pre-bg: #020617;
+    --pre-text: #e2e8f0;
+    --chip-hover: #334155;
+    --chip-active: #1e3a8a;
   }
 
   * { box-sizing: border-box; }
@@ -165,6 +210,7 @@ const styles = `
     color: var(--text-main);
     line-height: 1.5;
     overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
   }
 
   .app-container {
@@ -189,6 +235,12 @@ const styles = `
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+
+  .header-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
   }
 
   h1 {
@@ -229,6 +281,7 @@ const styles = `
     flex-direction: column;
     height: 100%;
     min-height: 600px;
+    transition: background-color 0.3s, border-color 0.3s;
   }
 
   .card-header {
@@ -265,9 +318,11 @@ const styles = `
     font-family: inherit;
     font-size: 1rem;
     resize: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s, color 0.3s;
     outline: none;
     line-height: 1.6;
+    background-color: var(--input-bg);
+    color: var(--text-main);
   }
 
   textarea:focus {
@@ -314,11 +369,12 @@ const styles = `
   }
 
   .chip:hover {
-    background: #f1f5f9;
+    background: var(--chip-hover);
+    color: var(--text-main);
   }
 
   .chip.active {
-    background: #eff6ff;
+    background: var(--chip-active);
     border-color: var(--primary);
     color: var(--primary);
   }
@@ -329,6 +385,14 @@ const styles = `
     justify-content: space-between;
     gap: 16px;
     margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .left-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
   }
 
   .thinking-toggle {
@@ -343,20 +407,22 @@ const styles = `
   }
 
   .thinking-toggle:hover {
-    background: #f1f5f9;
+    background: var(--chip-hover);
   }
 
   .toggle-checkbox {
     width: 40px;
     height: 22px;
-    background: #cbd5e1;
+    background: var(--text-muted);
     border-radius: 11px;
     position: relative;
     transition: background 0.2s;
+    opacity: 0.5;
   }
 
   .toggle-checkbox.checked {
     background: var(--primary);
+    opacity: 1;
   }
 
   .toggle-thumb {
@@ -407,12 +473,12 @@ const styles = `
   }
 
   .btn-stop {
-    background: #ef4444;
+    background: var(--error);
     color: white;
   }
   
   .btn-stop:hover {
-    background: #dc2626;
+    filter: brightness(0.9);
   }
 
   .btn-ghost {
@@ -423,12 +489,12 @@ const styles = `
   }
   
   .btn-ghost:hover {
-    background: #f1f5f9;
+    background: var(--chip-hover);
     color: var(--text-main);
   }
 
   .output-area {
-    background: #f8fafc;
+    background: var(--bg-color);
     border-radius: 8px;
     border: 1px solid var(--border);
     padding: 24px;
@@ -436,6 +502,7 @@ const styles = `
     overflow-y: auto;
     font-size: 1rem;
     line-height: 1.7;
+    transition: background-color 0.3s;
   }
   
   /* Enhanced Markdown Styling */
@@ -455,17 +522,17 @@ const styles = `
   }
   
   .output-content code {
-    background: #e2e8f0;
+    background: var(--code-bg);
     padding: 2px 5px;
     border-radius: 4px;
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
     font-size: 0.9em;
-    color: #0f172a;
+    color: var(--text-main);
   }
   
   .output-content pre {
-    background: #1e293b;
-    color: #f8fafc;
+    background: var(--pre-bg);
+    color: var(--pre-text);
     padding: 16px;
     border-radius: 8px;
     overflow-x: auto;
@@ -482,6 +549,7 @@ const styles = `
   .output-content ul, .output-content ol {
     padding-left: 24px;
     margin: 16px 0;
+    color: var(--text-main);
   }
   
   .output-content li {
@@ -501,16 +569,20 @@ const styles = `
     border: 1px solid var(--border);
     padding: 10px 14px;
     text-align: left;
-  }
-  
-  .output-content th {
-    background: #f1f5f9;
-    font-weight: 600;
     color: var(--text-main);
   }
   
+  .output-content th {
+    background: var(--chip-hover);
+    font-weight: 600;
+  }
+  
   .output-content tr:nth-child(even) {
-    background-color: #fcfcfc;
+    background-color: var(--bg-color);
+  }
+  
+  .output-content p {
+    color: var(--text-main);
   }
 
   .output-content blockquote {
@@ -536,9 +608,9 @@ const styles = `
   .error-message {
     margin-top: 12px;
     padding: 12px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #991b1b;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
     border-radius: 8px;
     font-size: 0.9rem;
     display: flex;
@@ -548,16 +620,26 @@ const styles = `
   
   .custom-input-container {
     margin-top: 12px;
+    position: relative;
+  }
+  
+  .custom-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
   }
   
   .custom-input {
     width: 100%;
     padding: 12px;
+    padding-right: 36px;
     border: 1px solid var(--border);
     border-radius: 8px;
     font-family: inherit;
     font-size: 0.95rem;
     transition: border-color 0.2s, box-shadow 0.2s;
+    background-color: var(--input-bg);
+    color: var(--text-main);
   }
   
   .custom-input:focus {
@@ -567,7 +649,31 @@ const styles = `
 
   .custom-input.error {
     border-color: var(--error);
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 0 1px var(--error);
+  }
+  
+  .error-icon-input {
+    position: absolute;
+    right: 12px;
+    color: var(--error);
+    pointer-events: none;
+  }
+
+  .model-select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+    min-width: 150px;
+  }
+  
+  .model-select:focus {
+    border-color: var(--primary);
   }
 
   /* History Sidebar */
@@ -577,7 +683,7 @@ const styles = `
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 50;
     opacity: 0;
     pointer-events: none;
@@ -615,7 +721,7 @@ const styles = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #f8fafc;
+    background: var(--bg-color);
   }
 
   .history-title {
@@ -639,7 +745,7 @@ const styles = `
     padding: 16px;
     cursor: pointer;
     transition: all 0.2s;
-    background: #fff;
+    background: var(--card-bg);
     position: relative;
   }
 
@@ -658,7 +764,7 @@ const styles = `
   }
 
   .history-badge {
-    background: #eff6ff;
+    background: var(--chip-active);
     color: var(--primary);
     padding: 2px 8px;
     border-radius: 12px;
@@ -681,7 +787,7 @@ const styles = `
     right: 12px;
     opacity: 0;
     transition: opacity 0.2s;
-    background: white;
+    background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px;
@@ -691,8 +797,8 @@ const styles = `
   
   .history-delete:hover {
     color: var(--error);
-    border-color: #fecaca;
-    background: #fef2f2;
+    border-color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
   }
 
   .history-item:hover .history-delete {
@@ -733,6 +839,11 @@ const MODES = [
   { id: 'custom', label: 'Власний запит', prompt: '' }
 ];
 
+const MODELS = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Швидкий)' },
+  { id: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (Розумний)' },
+];
+
 interface HistoryItem {
   id: string;
   timestamp: number;
@@ -754,6 +865,8 @@ const App = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [useThinking, setUseThinking] = useState(false);
   const [customPromptError, setCustomPromptError] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   
   // Abort controller for streaming
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -769,6 +882,16 @@ const App = () => {
       console.error("Failed to load history", e);
     }
   }, []);
+
+  // Theme effect
+  useEffect(() => {
+    document.body.className = theme;
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   const saveHistory = (newItem: HistoryItem) => {
     const updated = [newItem, ...history].slice(0, 50); // Limit to 50
@@ -796,8 +919,15 @@ const App = () => {
       return;
     }
 
+    if (selectedMode === 'custom' && !customPrompt.trim()) {
+      setCustomPromptError(true);
+      setError("Будь ласка, введіть інструкцію для власного запиту.");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
+    setCustomPromptError(false);
     setOutput(""); // Clear output for streaming
     
     abortControllerRef.current = new AbortController();
@@ -809,12 +939,6 @@ const App = () => {
       const modeConfig = MODES.find(m => m.id === selectedMode);
       
       if (selectedMode === 'custom') {
-        if (!customPrompt.trim()) {
-            setCustomPromptError(true);
-            setIsLoading(false);
-            return;
-        }
-        setCustomPromptError(false);
         systemPrompt = customPrompt;
       } else {
         systemPrompt = modeConfig?.prompt || "";
@@ -828,7 +952,7 @@ const App = () => {
       }
 
       const stream = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
+        model: selectedModel,
         contents: [
           { role: 'user', parts: [{ text: `Instruction: ${systemPrompt}\n\nInput Text:\n${input}` }] }
         ],
@@ -839,7 +963,7 @@ const App = () => {
 
       let fullText = "";
       for await (const chunk of stream) {
-        const text = chunk.text();
+        const text = chunk.text;
         if (text) {
           fullText += text;
           setOutput(prev => prev + text);
@@ -876,19 +1000,55 @@ const App = () => {
     }
   };
 
-  const stopGeneration = () => {
+  const stopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const copyToClipboard = () => {
+  const copyToClipboard = useCallback(() => {
+    if (!output) return;
     navigator.clipboard.writeText(output);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, [output]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Enter or Cmd+Enter to submit
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!isLoading && input.trim()) {
+            handleStructure();
+        }
+      }
+      // Ctrl+Shift+S to stop
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        stopGeneration();
+      }
+      // Ctrl+C to copy output (if no text selected)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+        const selection = window.getSelection();
+        if (selection && selection.toString().length === 0 && output) {
+           // Only prevent default if we actually copy, otherwise we block system copy
+           // However, system copy on empty selection usually does nothing.
+           // We will let it bubble if user is focused on an input.
+           const activeTag = document.activeElement?.tagName.toLowerCase();
+           if (activeTag !== 'input' && activeTag !== 'textarea') {
+              e.preventDefault();
+              copyToClipboard();
+           }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [input, customPrompt, selectedMode, useThinking, selectedModel, isLoading, output, stopGeneration, copyToClipboard]);
+
 
   return (
     <div className="app-container">
@@ -902,10 +1062,15 @@ const App = () => {
           </h1>
           <span className="subtitle">AI-помічник для роботи з текстом</span>
         </div>
-        <button className="btn btn-ghost" onClick={() => setHistoryOpen(true)}>
-          <HistoryIcon />
-          <span>Історія</span>
-        </button>
+        <div className="header-right">
+          <button className="btn btn-ghost" onClick={toggleTheme} title={theme === 'light' ? 'Темна тема' : 'Світла тема'}>
+            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+          </button>
+          <button className="btn btn-ghost" onClick={() => setHistoryOpen(true)}>
+            <HistoryIcon />
+            <span>Історія</span>
+          </button>
+        </div>
       </header>
 
       <main className="main-content">
@@ -928,7 +1093,19 @@ const App = () => {
           />
 
           <div className="controls">
-            <span className="label-text">Режим обробки:</span>
+            <div style={{display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap: '8px'}}>
+                 <span className="label-text">Режим обробки:</span>
+                 <select 
+                    className="model-select" 
+                    value={selectedModel} 
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                 >
+                    {MODELS.map(m => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                 </select>
+            </div>
+            
             <div className="mode-selector">
               {MODES.map((mode) => (
                 <button
@@ -944,41 +1121,50 @@ const App = () => {
             {selectedMode === 'custom' && (
               <div className="custom-input-container">
                 <span className="label-text">Ваша інструкція:</span>
-                <input 
-                    type="text" 
-                    className={`custom-input ${customPromptError ? 'error' : ''}`}
-                    value={customPrompt}
-                    onChange={(e) => {
-                        setCustomPrompt(e.target.value);
-                        if (customPromptError) setCustomPromptError(false);
-                    }}
-                    placeholder="Наприклад: Переклади англійською та виділи головні тези..."
-                />
+                <div className="custom-input-wrapper">
+                    <input 
+                        type="text" 
+                        className={`custom-input ${customPromptError ? 'error' : ''}`}
+                        value={customPrompt}
+                        onChange={(e) => {
+                            setCustomPrompt(e.target.value);
+                            if (customPromptError) setCustomPromptError(false);
+                        }}
+                        placeholder="Наприклад: Переклади англійською та виділи головні тези..."
+                    />
+                    {customPromptError && (
+                        <div className="error-icon-input" title="Це поле обов'язкове">
+                            <AlertCircleIcon />
+                        </div>
+                    )}
+                </div>
               </div>
             )}
 
             <div className="action-bar">
-               <div 
-                 className="thinking-toggle" 
-                 onClick={() => setUseThinking(!useThinking)}
-                 title="Використовувати модель мислення для складних завдань"
-               >
-                 <div className={`toggle-checkbox ${useThinking ? 'checked' : ''}`}>
-                   <div className="toggle-thumb" />
-                 </div>
-                 <span style={{fontSize: '0.9rem', color: useThinking ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 500}}>
-                    Глибокий аналіз
-                 </span>
-                 {useThinking && <BrainIcon />}
+               <div className="left-actions">
+                   <div 
+                     className="thinking-toggle" 
+                     onClick={() => setUseThinking(!useThinking)}
+                     title="Використовувати модель мислення для складних завдань"
+                   >
+                     <div className={`toggle-checkbox ${useThinking ? 'checked' : ''}`}>
+                       <div className="toggle-thumb" />
+                     </div>
+                     <span style={{fontSize: '0.9rem', color: useThinking ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 500}}>
+                        Глибокий аналіз
+                     </span>
+                     {useThinking && <BrainIcon />}
+                   </div>
                </div>
 
                {isLoading ? (
-                 <button className="btn btn-stop" onClick={stopGeneration}>
+                 <button className="btn btn-stop" onClick={stopGeneration} title="Ctrl+Shift+S">
                    <StopIcon />
                    Зупинити
                  </button>
                ) : (
-                 <button className="btn btn-primary" onClick={handleStructure} disabled={!input.trim()}>
+                 <button className="btn btn-primary" onClick={handleStructure} disabled={!input.trim()} title="Ctrl+Enter">
                    <SparklesIcon />
                    Обробити
                  </button>
@@ -988,7 +1174,7 @@ const App = () => {
           
           {error && (
             <div className="error-message">
-              <XIcon /> {error}
+              <AlertCircleIcon /> {error}
             </div>
           )}
         </div>
@@ -1011,7 +1197,7 @@ const App = () => {
                 className="btn btn-ghost" 
                 onClick={copyToClipboard}
                 disabled={!output}
-                title="Копіювати"
+                title="Копіювати (Ctrl+C)"
               >
                 {copied ? <CheckIcon /> : <CopyIcon />}
               </button>
@@ -1086,4 +1272,3 @@ const App = () => {
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
-    
